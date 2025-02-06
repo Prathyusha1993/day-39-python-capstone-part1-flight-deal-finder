@@ -1,10 +1,17 @@
 #This file will need to use the DataManager,FlightSearch, FlightData, NotificationManager classes to achieve the program requirements.
+import smtplib
 import time
 from datetime import datetime, timedelta
 from data_manager import DataManager
 from flight_search import FlightSearch
 from flight_data import find_cheapest_flights
+from dotenv import load_dotenv
+import os
 
+
+load_dotenv()
+MY_EMAIL = os.getenv('MY_EMAIL')
+MY_PASSWORD = os.getenv('MY_PASSWORD')
 ORIGINAL_CITY_IATA = 'LON'
 
 data_manager = DataManager()
@@ -39,3 +46,22 @@ for destination in sheet_data:
     cheapest_flight = find_cheapest_flights(flights)
     print(f"{destination['city']}: £{cheapest_flight.price}")
     time.sleep(2)
+
+    # print(type(cheapest_flight.price))
+    # print(type(destination['lowestPrice']))
+    try:
+        price = int(cheapest_flight.price[0])
+    except (TypeError, ValueError, IndexError):
+        price = float('inf')
+
+    if price < destination['lowestPrice']:
+        print(f"Lower price flight found to {destination['city']}!")
+
+        # i used smtplib you can also use twilio as sms
+        with smtplib.SMTP('smtp.gmail.com', port=587) as connection:
+            connection.starttls()
+            connection.login(MY_EMAIL, MY_PASSWORD)
+            connection.sendmail(from_addr=MY_EMAIL, to_addrs=MY_EMAIL, msg=f'Subject:Info about cheapest flight: £{cheapest_flight.price} from '
+                                    f'{cheapest_flight.origin_airport} to {cheapest_flight.destination_airport}'
+                                    f'on {cheapest_flight.out_date} until {cheapest_flight.return_date}.')
+            connection.close()
